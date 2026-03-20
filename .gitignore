@@ -1,0 +1,26 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Rust build artifacts
+/target/
+**/target/
+
+# Tauri build artifacts
+src-tauri/gen/
+src-tauri/target/
+src-tauri/bundle/
+src-tauri/desktop/build/
+src-tauri/.cargo/
+
+# Logs & temp files
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Environment variables
+.env
+.env.*
+

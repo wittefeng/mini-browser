@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>极简套壳浏览器</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: "Segoe UI", sans-serif; height: 100vh; overflow: hidden; }
+    .app {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .toolbar {
+      padding: 8px;
+      background: #f5f5f5;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    #url-input {
+      flex: 1;
+      padding: 6px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    #go-btn {
+      width: 100px;
+      padding: 6px;
+      background: #0078d4;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .tip {
+      padding: 8px 10px;
+      color: #666;
+      font-size: 12px;
+      border-bottom: 1px solid #f0f0f0;
+      background: #fafafa;
+    }
+    .placeholder {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #999;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="toolbar">
+      <input
+        type="text"
+        id="url-input"
+        placeholder="输入网址（如 https://www.feishu.cn）"
+        value="https://www.feishu.cn"
+      />
+      <button id="go-btn">访问</button>
+    </div>
+    <div class="tip">上方输入地址，下方为原生网页视图；带 <code>target=&quot;_blank&quot;</code> 的链接会在下方同一区域打开。</div>
+    <div class="placeholder">正在使用原生 WebView 显示网页内容...</div>
+  </div>
+
+  <script>
+    const urlInput = document.getElementById("url-input");
+    const goBtn = document.getElementById("go-btn");
+
+    const fixUrl = (url) => {
+      if (!url) return "https://www.feishu.cn";
+      if (!/^https?:\/\//i.test(url)) return `https://${url}`;
+      return url;
+    };
+
+    const navigate = async () => {
+      const target = fixUrl(urlInput.value.trim());
+      urlInput.value = target;
+      try {
+        const invoke =
+          window.__TAURI__?.core?.invoke ||
+          window.__TAURI_INTERNALS__?.invoke;
+        if (!invoke) throw new Error("Tauri bridge not found");
+        await invoke("open_url", { url: target });
+      } catch (err) {
+        alert(`打开失败: ${String(err)}`);
+      }
+    };
+
+    goBtn.addEventListener("click", navigate);
+    urlInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") navigate();
+    });
+
+  </script>
+</body>
+</html>

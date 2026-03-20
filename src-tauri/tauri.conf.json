@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "MiniBrowser",
+  "version": "0.1.0",
+  "identifier": "com.minibrowser.app",
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "frontendDist": "../static"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "套壳浏览器",
+        "width": 1200,
+        "height": 800,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "msi",
+    "icon": [
+      "icons/icon.ico"
+    ],
+    "category": "DeveloperTool",
+    "copyright": "",
+    "resources": [],
+    "externalBin": []
+  }
+}
