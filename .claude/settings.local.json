@@ -8,7 +8,9 @@
       "Bash(cargo doc:*)",
       "Bash(cargo search:*)",
       "Read(//c/Users/fengwei/.cargo/registry/src/**)",
-      "Bash(2)"
+      "Bash(2)",
+      "Bash(cmd //c \"taskkill /F /IM mini_browser.exe 2>/dev/null\")",
+      "Bash(git add:*)"
     ]
   }
 }

@@ -89,8 +89,19 @@ fn main() {
             let _viewer = window.add_child(
                 WebviewBuilder::new(VIEWER_LABEL, WebviewUrl::External(home)).on_new_window(
                     move |url, _features| {
-                        if let Some(v) = app_handle_for_new_window.get_webview(VIEWER_LABEL) {
-                            let _ = v.navigate(url);
+                        // 在当前应用内创建新窗口
+                        let url_str = url.to_string();
+                        if let Ok(parsed_url) = Url::parse(&url_str) {
+                            // 使用 Manager trait 的 create_webview_window 方法
+                            let manager: &AppHandle = app_handle_for_new_window.as_ref();
+                            let _ = tauri::WebviewWindowBuilder::new(
+                                manager,
+                                "tab",
+                                tauri::WebviewUrl::External(parsed_url),
+                            )
+                            .title("小程序浏览器")
+                            .min_inner_size(300.0, 200.0)
+                            .build();
                         }
                         NewWindowResponse::Deny
                     },
