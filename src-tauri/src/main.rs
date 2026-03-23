@@ -30,30 +30,15 @@ fn open_url(app: AppHandle, url: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn navigate_back(app: AppHandle) -> Result<(), String> {
-    let viewer = app
-        .get_webview(VIEWER_LABEL)
-        .ok_or_else(|| "viewer webview not found".to_string())?;
-
-    // 使用 JavaScript history.back() 实现后退
-    // 这适用于 same-origin 页面
-    let script = "if (window.history && window.history.length > 1) { window.history.back(); }";
-    viewer
-        .eval(script)
-        .map_err(|e| format!("navigate_back failed: {e}"))
+fn navigate_back(_app: AppHandle) -> Result<(), String> {
+    // 后退逻辑完全在前端实现，这里只是占位
+    Ok(())
 }
 
 #[tauri::command]
-fn navigate_forward(app: AppHandle) -> Result<(), String> {
-    let viewer = app
-        .get_webview(VIEWER_LABEL)
-        .ok_or_else(|| "viewer webview not found".to_string())?;
-
-    // 使用 JavaScript history.forward() 实现前进
-    let script = "if (window.history && window.history.length > 1) { window.history.forward(); }";
-    viewer
-        .eval(script)
-        .map_err(|e| format!("navigate_forward failed: {e}"))
+fn navigate_forward(_app: AppHandle) -> Result<(), String> {
+    // 前进逻辑完全在前端实现，这里只是占位
+    Ok(())
 }
 
 #[tauri::command]
@@ -79,11 +64,10 @@ fn stop(app: AppHandle) -> Result<(), String> {
         .get_webview(VIEWER_LABEL)
         .ok_or_else(|| "viewer webview not found".to_string())?;
 
-    // 使用 JavaScript window.stop() 停止加载
-    let script = "window.stop && window.stop();";
-    let _ = viewer.eval(script);
-
-    Ok(())
+    // 停止加载 - 导航到一个空白页面
+    viewer
+        .navigate("about:blank".parse().map_err(|e| format!("invalid url: {e}"))?)
+        .map_err(|e| format!("stop failed: {e}"))
 }
 
 fn main() {

@@ -252,10 +252,10 @@
     // 导航控制
     const navigateBack = () => {
       try {
-        const invoke = getInvoke();
-        if (!invoke) throw new Error("Tauri bridge not found");
-        // 使用 Rust 后端的 navigate_back 命令，通过 JavaScript history.back() 实现
-        invoke("navigate_back", {});
+        // 使用 JavaScript history.back() 实现后退
+        if (window.history && window.history.length > 1) {
+          window.history.back();
+        }
       } catch (err) {
         console.warn("后退失败:", err.message);
       }
@@ -263,10 +263,10 @@
 
     const navigateForward = () => {
       try {
-        const invoke = getInvoke();
-        if (!invoke) throw new Error("Tauri bridge not found");
-        // 使用 Rust 后端的 navigate_forward 命令，通过 JavaScript history.forward() 实现
-        invoke("navigate_forward", {});
+        // 使用 JavaScript history.forward() 实现前进
+        if (window.history && window.history.length > 1) {
+          window.history.forward();
+        }
       } catch (err) {
         console.warn("前进失败:", err.message);
       }
@@ -284,9 +284,8 @@
 
     const stopLoading = () => {
       try {
-        const invoke = getInvoke();
-        if (!invoke) throw new Error("Tauri bridge not found");
-        invoke("stop", {});
+        // 使用 JavaScript window.stop() 停止加载
+        window.stop && window.stop();
       } catch (err) {
         console.warn("停止失败:", err.message);
       }

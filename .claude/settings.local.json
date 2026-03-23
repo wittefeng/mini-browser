@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tauri:*)",
+      "Bash(cargo check:*)",
+      "Bash(node --check d:/me/miniview/MiniBrowser/static/index.html)",
+      "Bash(cargo build:*)",
+      "Bash(cargo doc:*)",
+      "Bash(cargo search:*)",
+      "Read(//c/Users/fengwei/.cargo/registry/src/**)",
+      "Bash(2)"
+    ]
+  }
+}
