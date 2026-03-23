@@ -31,13 +31,11 @@ fn open_url(app: AppHandle, url: String) -> Result<(), String> {
 
 #[tauri::command]
 fn navigate_back(_app: AppHandle) -> Result<(), String> {
-    // 后退逻辑完全在前端实现，这里只是占位
     Ok(())
 }
 
 #[tauri::command]
 fn navigate_forward(_app: AppHandle) -> Result<(), String> {
-    // 前进逻辑完全在前端实现，这里只是占位
     Ok(())
 }
 
@@ -64,7 +62,6 @@ fn stop(app: AppHandle) -> Result<(), String> {
         .get_webview(VIEWER_LABEL)
         .ok_or_else(|| "viewer webview not found".to_string())?;
 
-    // 停止加载 - 导航到一个空白页面
     viewer
         .navigate("about:blank".parse().map_err(|e| format!("invalid url: {e}"))?)
         .map_err(|e| format!("stop failed: {e}"))
@@ -73,7 +70,6 @@ fn stop(app: AppHandle) -> Result<(), String> {
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
-            // `add_child` 在 `Window` 上；`WebviewWindow` 只是窗口 + 主 WebView 的封装
             let window = app
                 .get_window("main")
                 .ok_or("main window not found")?;
@@ -85,7 +81,7 @@ fn main() {
                 .parse()
                 .map_err(|e| format!("invalid DEFAULT_HOME: {e}"))?;
 
-            // 使用 Arc 共享 AppHandle，因为闭包需要 Send + Sync
+            // 使用 Arc 共享 AppHandle
             let app_handle = Arc::new(app.handle().clone());
 
             // 为 on_new_window 创建新的 Arc 引用
@@ -93,9 +89,6 @@ fn main() {
             let _viewer = window.add_child(
                 WebviewBuilder::new(VIEWER_LABEL, WebviewUrl::External(home)).on_new_window(
                     move |url, _features| {
-                        // `target="_blank"` / `window.open` 会走这里：在同一子 WebView 中打开，不弹新窗口
-                        // Tauri 2 的 on_new_window 需要 Send + Sync closure
-                        // AppHandle 是 Send 的，Arc<AppHandle> 也是 Send 的
                         if let Some(v) = app_handle_for_new_window.get_webview(VIEWER_LABEL) {
                             let _ = v.navigate(url);
                         }

@@ -158,6 +158,27 @@
   </div>
 
   <script>
+    // 修复飞书等网站的 PC 端检测问题
+    // 覆盖 navigator.userAgent 和其他浏览器特性检测
+    (function() {
+      const originalUserAgent = navigator.userAgent;
+      const mockUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+      // 使用 Object.defineProperties 覆盖只读属性
+      try {
+        Object.defineProperty(navigator, 'userAgent', {
+          get: () => mockUserAgent,
+          configurable: false
+        });
+        Object.defineProperty(navigator, 'platform', {
+          get: () => 'Win32',
+          configurable: false
+        });
+      } catch (e) {
+        console.warn('无法覆盖浏览器特性:', e);
+      }
+    })();
+
     const urlInput = document.getElementById("url-input");
     const goBtn = document.getElementById("go-btn");
 
