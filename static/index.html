@@ -28,7 +28,7 @@
       font-size: 14px;
     }
     #go-btn {
-      width: 100px;
+      width: 80px;
       padding: 6px;
       background: #0078d4;
       color: #fff;
@@ -36,12 +36,97 @@
       border-radius: 4px;
       cursor: pointer;
     }
+    .nav-btn {
+      width: 36px;
+      padding: 6px;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      color: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+    .nav-btn:hover {
+      background: #f0f0f0;
+    }
+    .nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
     .tip {
       padding: 8px 10px;
       color: #666;
       font-size: 12px;
       border-bottom: 1px solid #f0f0f0;
       background: #fafafa;
+    }
+    .notify-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.35);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 16px;
+    }
+    .notify-card {
+      width: min(720px, 100%);
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+      border: 1px solid #eee;
+      overflow: hidden;
+    }
+    .notify-header {
+      padding: 12px 14px;
+      font-weight: 600;
+      background: #fafafa;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .notify-body {
+      padding: 12px 14px;
+      color: #333;
+      font-size: 14px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+    .notify-url {
+      margin-top: 8px;
+      padding: 10px 12px;
+      background: #f6f6f6;
+      border-radius: 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      color: #444;
+    }
+    .notify-footer {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      padding: 12px 14px;
+      border-top: 1px solid #f0f0f0;
+    }
+    .btn {
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn-secondary {
+      background: #fff;
+      border-color: #ddd;
+      color: #333;
+    }
+    .btn-primary {
+      background: #0078d4;
+      border-color: #0078d4;
+      color: #fff;
     }
     .placeholder {
       flex: 1;
@@ -56,6 +141,10 @@
 <body>
   <div class="app">
     <div class="toolbar">
+      <button class="nav-btn" id="back-btn" title="后退">←</button>
+      <button class="nav-btn" id="forward-btn" title="前进">→</button>
+      <button class="nav-btn" id="refresh-btn" title="刷新">↻</button>
+      <button class="nav-btn" id="stop-btn" title="停止">✕</button>
       <input
         type="text"
         id="url-input"
@@ -64,8 +153,8 @@
       />
       <button id="go-btn">访问</button>
     </div>
-    <div class="tip">上方输入地址，下方为原生网页视图；带 <code>target=&quot;_blank&quot;</code> 的链接会在下方同一区域打开。</div>
-    <div class="placeholder">正在使用原生 WebView 显示网页内容...</div>
+    <div class="tip">上方输入地址，下方为原生网页视图；带 <code>target="_blank"</code> 的链接会在下方同一区域打开。输入的 URL 若包含 <code>?notify=</code> 或 <code>?notice=</code>，会先弹出通知提示。</div>
+    <div class="placeholder" id="loading-text" style="display: none;">正在加载...</div>
   </div>
 
   <script>
@@ -78,24 +167,141 @@
       return url;
     };
 
-    const navigate = async () => {
-      const target = fixUrl(urlInput.value.trim());
-      urlInput.value = target;
+    // 规则：仅当 URL 自带通知参数时才提示
+    // - `?notify=xxx` 或 `?notice=xxx` 存在即触发
+    // - 如果参数值为空，会使用默认文案
+    const getNotifyInfo = (urlStr) => {
       try {
-        const invoke =
-          window.__TAURI__?.core?.invoke ||
-          window.__TAURI_INTERNALS__?.invoke;
-        if (!invoke) throw new Error("Tauri bridge not found");
-        await invoke("open_url", { url: target });
-      } catch (err) {
-        alert(`打开失败: ${String(err)}`);
+        const u = new URL(urlStr);
+        const notifyVal = u.searchParams.get("notify");
+        const noticeVal = u.searchParams.get("notice");
+        const raw = notifyVal ?? noticeVal;
+        if (raw === null) return null;
+        const message = raw.trim() ? raw.trim() : "该网址包含通知内容";
+        return { message, url: urlStr };
+      } catch {
+        return null;
       }
     };
 
+    // 统一获取 Tauri invoke 方法
+    const getInvoke = () => {
+      return (
+        window.__TAURI__?.core?.invoke ||
+        window.__TAURI_INTERNALS__?.invoke
+      );
+    };
+
+    // 仅当 URL 带通知参数时：先请求/检查通知权限，再发送系统桌面通知
+    const sendDesktopNotification = async ({ message, url }) => {
+      try {
+        const invoke = getInvoke();
+        if (!invoke) {
+          alert(`通知提示：\n${message}\n${url}`);
+          return;
+        }
+
+        // is_permission_granted 返回值为 Option<bool>：
+        // - true: 已授权
+        // - false: 被拒绝
+        // - null: 需要请求/还未决定
+        let granted = await invoke("plugin:notification|is_permission_granted");
+        if (granted !== true) {
+          await invoke("plugin:notification|request_permission");
+          granted = await invoke(
+            "plugin:notification|is_permission_granted"
+          );
+        }
+
+        if (granted === true) {
+          await invoke("plugin:notification|notify", {
+            options: {
+              title: "通知提示",
+              body: `${message}\n${url}`,
+            },
+          });
+          return;
+        }
+
+        alert(`通知提示（未获得系统通知权限）：\n${message}\n${url}`);
+      } catch (err) {
+        // 忽略异常，继续使用兜底提示
+        alert(`通知提示：\n${message}\n${url}\n错误: ${err.message}`);
+      }
+    };
+
+    // 执行导航
+    const navigate = async () => {
+      const target = fixUrl(urlInput.value.trim());
+      urlInput.value = target;
+
+      const notifyInfo = getNotifyInfo(target);
+      if (notifyInfo) {
+        await sendDesktopNotification(notifyInfo);
+      }
+
+      try {
+        const invoke = getInvoke();
+        if (!invoke) throw new Error("Tauri bridge not found");
+        await invoke("open_url", { url: target });
+      } catch (err) {
+        alert(`打开失败: ${err.message}`);
+      }
+    };
+
+    // 导航控制
+    const navigateBack = () => {
+      try {
+        const invoke = getInvoke();
+        if (!invoke) throw new Error("Tauri bridge not found");
+        // 注意：WebView2 不支持直接的 NavigateBack
+        // 建议使用 Tauri 的 webview API 或降低expect
+        alert("后退功能暂不可用：WebView2 不支持直接导航历史控制");
+      } catch (err) {
+        console.warn("后退失败:", err.message);
+      }
+    };
+
+    const navigateForward = () => {
+      try {
+        const invoke = getInvoke();
+        if (!invoke) throw new Error("Tauri bridge not found");
+        alert("前进功能暂不可用：WebView2 不支持直接导航历史控制");
+      } catch (err) {
+        console.warn("前进失败:", err.message);
+      }
+    };
+
+    const refreshPage = () => {
+      try {
+        const invoke = getInvoke();
+        if (!invoke) throw new Error("Tauri bridge not found");
+        invoke("refresh", { url: urlInput.value });
+      } catch (err) {
+        console.warn("刷新失败:", err.message);
+      }
+    };
+
+    const stopLoading = () => {
+      try {
+        const invoke = getInvoke();
+        if (!invoke) throw new Error("Tauri bridge not found");
+        invoke("stop", {});
+      } catch (err) {
+        console.warn("停止失败:", err.message);
+      }
+    };
+
+    // 绑定事件
     goBtn.addEventListener("click", navigate);
     urlInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") navigate();
     });
+
+    document.getElementById("back-btn").addEventListener("click", navigateBack);
+    document.getElementById("forward-btn").addEventListener("click", navigateForward);
+    document.getElementById("refresh-btn").addEventListener("click", refreshPage);
+    document.getElementById("stop-btn").addEventListener("click", stopLoading);
 
   </script>
 </body>
