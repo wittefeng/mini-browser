@@ -254,9 +254,8 @@
       try {
         const invoke = getInvoke();
         if (!invoke) throw new Error("Tauri bridge not found");
-        // 注意：WebView2 不支持直接的 NavigateBack
-        // 建议使用 Tauri 的 webview API 或降低expect
-        alert("后退功能暂不可用：WebView2 不支持直接导航历史控制");
+        // 使用 Rust 后端的 navigate_back 命令，通过 JavaScript history.back() 实现
+        invoke("navigate_back", {});
       } catch (err) {
         console.warn("后退失败:", err.message);
       }
@@ -266,7 +265,8 @@
       try {
         const invoke = getInvoke();
         if (!invoke) throw new Error("Tauri bridge not found");
-        alert("前进功能暂不可用：WebView2 不支持直接导航历史控制");
+        // 使用 Rust 后端的 navigate_forward 命令，通过 JavaScript history.forward() 实现
+        invoke("navigate_forward", {});
       } catch (err) {
         console.warn("前进失败:", err.message);
       }

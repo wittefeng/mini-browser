@@ -30,13 +30,30 @@ fn open_url(app: AppHandle, url: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn navigate_back(_app: AppHandle) -> Result<(), String> {
-    Err("navigate_back not supported on WebView2 (requires IWebView2NavigationController)".to_string())
+fn navigate_back(app: AppHandle) -> Result<(), String> {
+    let viewer = app
+        .get_webview(VIEWER_LABEL)
+        .ok_or_else(|| "viewer webview not found".to_string())?;
+
+    // 使用 JavaScript history.back() 实现后退
+    // 这适用于 same-origin 页面
+    let script = "if (window.history && window.history.length > 1) { window.history.back(); }";
+    viewer
+        .eval(script)
+        .map_err(|e| format!("navigate_back failed: {e}"))
 }
 
 #[tauri::command]
-fn navigate_forward(_app: AppHandle) -> Result<(), String> {
-    Err("navigate_forward not supported on WebView2 (requires IWebView2NavigationController)".to_string())
+fn navigate_forward(app: AppHandle) -> Result<(), String> {
+    let viewer = app
+        .get_webview(VIEWER_LABEL)
+        .ok_or_else(|| "viewer webview not found".to_string())?;
+
+    // 使用 JavaScript history.forward() 实现前进
+    let script = "if (window.history && window.history.length > 1) { window.history.forward(); }";
+    viewer
+        .eval(script)
+        .map_err(|e| format!("navigate_forward failed: {e}"))
 }
 
 #[tauri::command]
@@ -58,15 +75,13 @@ fn refresh(app: AppHandle, url: String) -> Result<(), String> {
 
 #[tauri::command]
 fn stop(app: AppHandle) -> Result<(), String> {
-    // WebView2 没有直接的 Stop 方法
-    // 可以通过 Navigate("about:blank") 来模拟停止
     let viewer = app
         .get_webview(VIEWER_LABEL)
         .ok_or_else(|| "viewer webview not found".to_string())?;
 
-    viewer
-        .navigate("about:blank".parse().map_err(|e| format!("invalid url: {e}"))?)
-        .map_err(|e| format!("stop failed: {e}"))?;
+    // 使用 JavaScript window.stop() 停止加载
+    let script = "window.stop && window.stop();";
+    let _ = viewer.eval(script);
 
     Ok(())
 }
